@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+option go_package = "github.com/faizalom/grpc-mq;proto";
+
+import "google/protobuf/empty.proto";
+
+service MessageBroker {
+  rpc Publish(Message) returns (Response);
+  rpc Subscribe(SubscriptionRequest) returns (stream Message);
+  rpc ListTopics(google.protobuf.Empty) returns (ListTopicsReply);
+}
+
+message Message {
+  string topic = 1;
+  optional string eventId = 2;
+  oneof content {
+    string text = 3; // For text-based messages
+    bytes binary = 4; // For binary-based messages
+  }
+  string senderId = 5;
+  int64 timestamp = 6;
+}
+
+message SubscriptionRequest {
+  string topic = 1;
+}
+
+message Response {
+  bool success = 1;
+}
+
+message TopicInfo {
+  string topic = 1;
+  int32 subscriber_count = 2;
+}
+
+message ListTopicsReply {
+  repeated TopicInfo topics = 1;
+}
