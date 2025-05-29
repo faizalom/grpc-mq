@@ -65,6 +65,16 @@ func (b *Broker) Subscribe(req *pb.SubscriptionRequest, stream pb.MessageBroker_
 	go func() {
 		<-ctx.Done()
 		log.Printf("Client disconnected from topic: %s", req.Topic)
+
+		b.mu.Lock()
+		// Remove the channel from the subscribers map
+		for i, subscriber := range b.subscribers[req.Topic] {
+			if subscriber == ch {
+				b.subscribers[req.Topic] = append(b.subscribers[req.Topic][:i], b.subscribers[req.Topic][i+1:]...)
+				break
+			}
+		}
+		b.mu.Unlock()
 	}()
 
 	for msg := range ch {
@@ -92,6 +102,9 @@ func (b *Broker) ListTopics(ctx context.Context, req *emptypb.Empty) (*pb.ListTo
 
 	topicInfos := make([]*pb.TopicInfo, 0, len(b.subscribers))
 	for k, t := range b.subscribers {
+		if len(t) == 0 {
+			continue
+		}
 		topicInfos = append(topicInfos, &pb.TopicInfo{Topic: k, SubscriberCount: int32(len(t))})
 	}
 	return &pb.ListTopicsReply{Topics: topicInfos}, nil

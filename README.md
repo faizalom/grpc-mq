@@ -1,4 +1,4 @@
-# gRPC-mq
+# gRPC-MQ
 gRPC MQ is a lightweight, scalable message queue (MQ) broker built using Go (Golang) and gRPC, designed for efficient real-time messaging and topic-based publish-subscribe (pub-sub) communication.
 
 # Protoc command to generate .go files
