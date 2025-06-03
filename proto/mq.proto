@@ -2,12 +2,10 @@ syntax = "proto3";
 
 option go_package = "github.com/faizalom/grpc-mq;proto";
 
-import "google/protobuf/empty.proto";
-
 service MessageBroker {
   rpc Publish(Message) returns (Response);
   rpc Subscribe(SubscriptionRequest) returns (stream Message);
-  rpc ListTopics(google.protobuf.Empty) returns (ListTopicsReply);
+  rpc ListTopics(ListTopicsRequest) returns (ListTopicsReply);
 }
 
 message Message {
@@ -23,15 +21,20 @@ message Message {
 
 message SubscriptionRequest {
   string topic = 1;
+  string subscriberId = 2;
 }
 
 message Response {
   bool success = 1;
 }
 
+message ListTopicsRequest {
+  optional string topic = 1;
+}
+
 message TopicInfo {
   string topic = 1;
-  int32 subscriber_count = 2;
+  repeated string subscriberIds = 2;
 }
 
 message ListTopicsReply {

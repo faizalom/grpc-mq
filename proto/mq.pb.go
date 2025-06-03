@@ -9,7 +9,6 @@ package proto
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -139,6 +138,7 @@ func (*Message_Binary) isMessage_Content() {}
 type SubscriptionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Topic         string                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
+	SubscriberId  string                 `protobuf:"bytes,2,opt,name=subscriberId,proto3" json:"subscriberId,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -176,6 +176,13 @@ func (*SubscriptionRequest) Descriptor() ([]byte, []int) {
 func (x *SubscriptionRequest) GetTopic() string {
 	if x != nil {
 		return x.Topic
+	}
+	return ""
+}
+
+func (x *SubscriptionRequest) GetSubscriberId() string {
+	if x != nil {
+		return x.SubscriberId
 	}
 	return ""
 }
@@ -224,17 +231,61 @@ func (x *Response) GetSuccess() bool {
 	return false
 }
 
+type ListTopicsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Topic         *string                `protobuf:"bytes,1,opt,name=topic,proto3,oneof" json:"topic,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTopicsRequest) Reset() {
+	*x = ListTopicsRequest{}
+	mi := &file_proto_mq_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTopicsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTopicsRequest) ProtoMessage() {}
+
+func (x *ListTopicsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mq_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTopicsRequest.ProtoReflect.Descriptor instead.
+func (*ListTopicsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_mq_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ListTopicsRequest) GetTopic() string {
+	if x != nil && x.Topic != nil {
+		return *x.Topic
+	}
+	return ""
+}
+
 type TopicInfo struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Topic           string                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
-	SubscriberCount int32                  `protobuf:"varint,2,opt,name=subscriber_count,json=subscriberCount,proto3" json:"subscriber_count,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Topic         string                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
+	SubscriberIds []string               `protobuf:"bytes,2,rep,name=subscriberIds,proto3" json:"subscriberIds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TopicInfo) Reset() {
 	*x = TopicInfo{}
-	mi := &file_proto_mq_proto_msgTypes[3]
+	mi := &file_proto_mq_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -246,7 +297,7 @@ func (x *TopicInfo) String() string {
 func (*TopicInfo) ProtoMessage() {}
 
 func (x *TopicInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mq_proto_msgTypes[3]
+	mi := &file_proto_mq_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -259,7 +310,7 @@ func (x *TopicInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicInfo.ProtoReflect.Descriptor instead.
 func (*TopicInfo) Descriptor() ([]byte, []int) {
-	return file_proto_mq_proto_rawDescGZIP(), []int{3}
+	return file_proto_mq_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *TopicInfo) GetTopic() string {
@@ -269,11 +320,11 @@ func (x *TopicInfo) GetTopic() string {
 	return ""
 }
 
-func (x *TopicInfo) GetSubscriberCount() int32 {
+func (x *TopicInfo) GetSubscriberIds() []string {
 	if x != nil {
-		return x.SubscriberCount
+		return x.SubscriberIds
 	}
-	return 0
+	return nil
 }
 
 type ListTopicsReply struct {
@@ -285,7 +336,7 @@ type ListTopicsReply struct {
 
 func (x *ListTopicsReply) Reset() {
 	*x = ListTopicsReply{}
-	mi := &file_proto_mq_proto_msgTypes[4]
+	mi := &file_proto_mq_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -297,7 +348,7 @@ func (x *ListTopicsReply) String() string {
 func (*ListTopicsReply) ProtoMessage() {}
 
 func (x *ListTopicsReply) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mq_proto_msgTypes[4]
+	mi := &file_proto_mq_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -310,7 +361,7 @@ func (x *ListTopicsReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTopicsReply.ProtoReflect.Descriptor instead.
 func (*ListTopicsReply) Descriptor() ([]byte, []int) {
-	return file_proto_mq_proto_rawDescGZIP(), []int{4}
+	return file_proto_mq_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListTopicsReply) GetTopics() []*TopicInfo {
@@ -324,7 +375,7 @@ var File_proto_mq_proto protoreflect.FileDescriptor
 
 const file_proto_mq_proto_rawDesc = "" +
 	"\n" +
-	"\x0eproto/mq.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xbf\x01\n" +
+	"\x0eproto/mq.proto\"\xbf\x01\n" +
 	"\aMessage\x12\x14\n" +
 	"\x05topic\x18\x01 \x01(\tR\x05topic\x12\x1d\n" +
 	"\aeventId\x18\x02 \x01(\tH\x01R\aeventId\x88\x01\x01\x12\x14\n" +
@@ -334,22 +385,26 @@ const file_proto_mq_proto_rawDesc = "" +
 	"\ttimestamp\x18\x06 \x01(\x03R\ttimestampB\t\n" +
 	"\acontentB\n" +
 	"\n" +
-	"\b_eventId\"+\n" +
+	"\b_eventId\"O\n" +
 	"\x13SubscriptionRequest\x12\x14\n" +
-	"\x05topic\x18\x01 \x01(\tR\x05topic\"$\n" +
+	"\x05topic\x18\x01 \x01(\tR\x05topic\x12\"\n" +
+	"\fsubscriberId\x18\x02 \x01(\tR\fsubscriberId\"$\n" +
 	"\bResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"L\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"8\n" +
+	"\x11ListTopicsRequest\x12\x19\n" +
+	"\x05topic\x18\x01 \x01(\tH\x00R\x05topic\x88\x01\x01B\b\n" +
+	"\x06_topic\"G\n" +
 	"\tTopicInfo\x12\x14\n" +
-	"\x05topic\x18\x01 \x01(\tR\x05topic\x12)\n" +
-	"\x10subscriber_count\x18\x02 \x01(\x05R\x0fsubscriberCount\"5\n" +
+	"\x05topic\x18\x01 \x01(\tR\x05topic\x12$\n" +
+	"\rsubscriberIds\x18\x02 \x03(\tR\rsubscriberIds\"5\n" +
 	"\x0fListTopicsReply\x12\"\n" +
 	"\x06topics\x18\x01 \x03(\v2\n" +
-	".TopicInfoR\x06topics2\x96\x01\n" +
+	".TopicInfoR\x06topics2\x92\x01\n" +
 	"\rMessageBroker\x12\x1e\n" +
 	"\aPublish\x12\b.Message\x1a\t.Response\x12-\n" +
-	"\tSubscribe\x12\x14.SubscriptionRequest\x1a\b.Message0\x01\x126\n" +
+	"\tSubscribe\x12\x14.SubscriptionRequest\x1a\b.Message0\x01\x122\n" +
 	"\n" +
-	"ListTopics\x12\x16.google.protobuf.Empty\x1a\x10.ListTopicsReplyB#Z!github.com/faizalom/grpc-mq;protob\x06proto3"
+	"ListTopics\x12\x12.ListTopicsRequest\x1a\x10.ListTopicsReplyB#Z!github.com/faizalom/grpc-mq;protob\x06proto3"
 
 var (
 	file_proto_mq_proto_rawDescOnce sync.Once
@@ -363,23 +418,23 @@ func file_proto_mq_proto_rawDescGZIP() []byte {
 	return file_proto_mq_proto_rawDescData
 }
 
-var file_proto_mq_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_proto_mq_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_proto_mq_proto_goTypes = []any{
 	(*Message)(nil),             // 0: Message
 	(*SubscriptionRequest)(nil), // 1: SubscriptionRequest
 	(*Response)(nil),            // 2: Response
-	(*TopicInfo)(nil),           // 3: TopicInfo
-	(*ListTopicsReply)(nil),     // 4: ListTopicsReply
-	(*emptypb.Empty)(nil),       // 5: google.protobuf.Empty
+	(*ListTopicsRequest)(nil),   // 3: ListTopicsRequest
+	(*TopicInfo)(nil),           // 4: TopicInfo
+	(*ListTopicsReply)(nil),     // 5: ListTopicsReply
 }
 var file_proto_mq_proto_depIdxs = []int32{
-	3, // 0: ListTopicsReply.topics:type_name -> TopicInfo
+	4, // 0: ListTopicsReply.topics:type_name -> TopicInfo
 	0, // 1: MessageBroker.Publish:input_type -> Message
 	1, // 2: MessageBroker.Subscribe:input_type -> SubscriptionRequest
-	5, // 3: MessageBroker.ListTopics:input_type -> google.protobuf.Empty
+	3, // 3: MessageBroker.ListTopics:input_type -> ListTopicsRequest
 	2, // 4: MessageBroker.Publish:output_type -> Response
 	0, // 5: MessageBroker.Subscribe:output_type -> Message
-	4, // 6: MessageBroker.ListTopics:output_type -> ListTopicsReply
+	5, // 6: MessageBroker.ListTopics:output_type -> ListTopicsReply
 	4, // [4:7] is the sub-list for method output_type
 	1, // [1:4] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
@@ -396,13 +451,14 @@ func file_proto_mq_proto_init() {
 		(*Message_Text)(nil),
 		(*Message_Binary)(nil),
 	}
+	file_proto_mq_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_mq_proto_rawDesc), len(file_proto_mq_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

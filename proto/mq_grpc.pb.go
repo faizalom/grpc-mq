@@ -11,7 +11,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -31,7 +30,7 @@ const (
 type MessageBrokerClient interface {
 	Publish(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Response, error)
 	Subscribe(ctx context.Context, in *SubscriptionRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Message], error)
-	ListTopics(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListTopicsReply, error)
+	ListTopics(ctx context.Context, in *ListTopicsRequest, opts ...grpc.CallOption) (*ListTopicsReply, error)
 }
 
 type messageBrokerClient struct {
@@ -71,7 +70,7 @@ func (c *messageBrokerClient) Subscribe(ctx context.Context, in *SubscriptionReq
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type MessageBroker_SubscribeClient = grpc.ServerStreamingClient[Message]
 
-func (c *messageBrokerClient) ListTopics(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListTopicsReply, error) {
+func (c *messageBrokerClient) ListTopics(ctx context.Context, in *ListTopicsRequest, opts ...grpc.CallOption) (*ListTopicsReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListTopicsReply)
 	err := c.cc.Invoke(ctx, MessageBroker_ListTopics_FullMethodName, in, out, cOpts...)
@@ -87,7 +86,7 @@ func (c *messageBrokerClient) ListTopics(ctx context.Context, in *emptypb.Empty,
 type MessageBrokerServer interface {
 	Publish(context.Context, *Message) (*Response, error)
 	Subscribe(*SubscriptionRequest, grpc.ServerStreamingServer[Message]) error
-	ListTopics(context.Context, *emptypb.Empty) (*ListTopicsReply, error)
+	ListTopics(context.Context, *ListTopicsRequest) (*ListTopicsReply, error)
 	mustEmbedUnimplementedMessageBrokerServer()
 }
 
@@ -104,7 +103,7 @@ func (UnimplementedMessageBrokerServer) Publish(context.Context, *Message) (*Res
 func (UnimplementedMessageBrokerServer) Subscribe(*SubscriptionRequest, grpc.ServerStreamingServer[Message]) error {
 	return status.Errorf(codes.Unimplemented, "method Subscribe not implemented")
 }
-func (UnimplementedMessageBrokerServer) ListTopics(context.Context, *emptypb.Empty) (*ListTopicsReply, error) {
+func (UnimplementedMessageBrokerServer) ListTopics(context.Context, *ListTopicsRequest) (*ListTopicsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListTopics not implemented")
 }
 func (UnimplementedMessageBrokerServer) mustEmbedUnimplementedMessageBrokerServer() {}
@@ -158,7 +157,7 @@ func _MessageBroker_Subscribe_Handler(srv interface{}, stream grpc.ServerStream)
 type MessageBroker_SubscribeServer = grpc.ServerStreamingServer[Message]
 
 func _MessageBroker_ListTopics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
+	in := new(ListTopicsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -170,7 +169,7 @@ func _MessageBroker_ListTopics_Handler(srv interface{}, ctx context.Context, dec
 		FullMethod: MessageBroker_ListTopics_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MessageBrokerServer).ListTopics(ctx, req.(*emptypb.Empty))
+		return srv.(MessageBrokerServer).ListTopics(ctx, req.(*ListTopicsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

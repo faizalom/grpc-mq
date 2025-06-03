@@ -14,7 +14,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type SubscriberMessage struct {
@@ -27,15 +26,25 @@ type SubscriberMessage struct {
 
 type Broker struct {
 	pb.UnimplementedMessageBrokerServer
-	subscribers map[string][]chan SubscriberMessage
+	subscribers map[string]map[string]chan SubscriberMessage
 	mu          sync.RWMutex
 }
 
 func (b *Broker) Publish(ctx context.Context, msg *pb.Message) (*pb.Response, error) {
-	log.Printf("Publishing message to topic: %s, sender: %s, eventId: %v", msg.Topic, msg.GetSenderId(), msg.GetEventId())
+	if msg.GetSenderId() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "senderId is required")
+	}
+
+	subscribers, ok := b.subscribers[msg.Topic]
+	if !ok {
+		return nil, status.Error(codes.NotFound, "topic is empty")
+	}
+
+	log.Printf("Publishing topic: %s, sender: %s, eventId: %v, Subscribers: %v",
+		msg.Topic, msg.GetSenderId(), msg.GetEventId(), len(subscribers))
 
 	b.mu.RLock()
-	for _, ch := range b.subscribers[msg.Topic] {
+	for _, ch := range subscribers {
 		ch <- SubscriberMessage{
 			EventId:      msg.EventId,
 			ContentText:  msg.GetText(),
@@ -54,26 +63,36 @@ func (b *Broker) Subscribe(req *pb.SubscriptionRequest, stream pb.MessageBroker_
 		return status.Errorf(codes.InvalidArgument, "invalid topic: %s", req.Topic)
 	}
 
-	log.Printf("New subscription request for topic: %s", req.Topic)
+	subId := req.GetSubscriberId()
+
+	if subId == "" {
+		return status.Errorf(codes.InvalidArgument, "subscriberId is required")
+	}
+
+	if b.subscribers[req.Topic][subId] != nil {
+		return status.Errorf(codes.AlreadyExists, "subscriberId already exists")
+	}
+
+	log.Printf("Subscribing topic: %s, subscriber: %s", req.Topic, subId)
 
 	ch := make(chan SubscriberMessage)
 	b.mu.Lock()
-	b.subscribers[req.Topic] = append(b.subscribers[req.Topic], ch)
+	if len(b.subscribers[req.Topic]) == 0 {
+		b.subscribers[req.Topic] = make(map[string]chan SubscriberMessage)
+	}
+	b.subscribers[req.Topic][subId] = ch
 	b.mu.Unlock()
 
 	ctx := stream.Context()
+	ctx = context.WithValue(ctx, "subscriberId", subId)
 	go func() {
 		<-ctx.Done()
-		log.Printf("Client disconnected from topic: %s", req.Topic)
+		subId := ctx.Value("subscriberId").(string)
+		log.Printf("Client disconnected from topic: %s, subscriber: %s", req.Topic, subId)
 
 		b.mu.Lock()
-		// Remove the channel from the subscribers map
-		for i, subscriber := range b.subscribers[req.Topic] {
-			if subscriber == ch {
-				b.subscribers[req.Topic] = append(b.subscribers[req.Topic][:i], b.subscribers[req.Topic][i+1:]...)
-				break
-			}
-		}
+		// Delete subscriber when disconnected
+		delete(b.subscribers[req.Topic], subId)
 		b.mu.Unlock()
 	}()
 
@@ -96,16 +115,46 @@ func (b *Broker) Subscribe(req *pb.SubscriptionRequest, stream pb.MessageBroker_
 	return nil
 }
 
-func (b *Broker) ListTopics(ctx context.Context, req *emptypb.Empty) (*pb.ListTopicsReply, error) {
+func GetTopicSubscribers(topic map[string]chan SubscriberMessage) []string {
+	subscriberIds := []string{}
+	for id, _ := range topic {
+		subscriberIds = append(subscriberIds, id)
+	}
+
+	return subscriberIds
+}
+
+func (b *Broker) ListTopics(ctx context.Context, req *pb.ListTopicsRequest) (*pb.ListTopicsReply, error) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
+
+	reqTopic := req.GetTopic()
+	if reqTopic != "" {
+		subscribers, ok := b.subscribers[reqTopic]
+		if !ok {
+			return nil, status.Error(codes.NotFound, "topic is empty")
+		}
+
+		topic := &pb.TopicInfo{
+			Topic:         reqTopic,
+			SubscriberIds: GetTopicSubscribers(subscribers),
+		}
+
+		return &pb.ListTopicsReply{
+			Topics: append([]*pb.TopicInfo{}, topic),
+		}, nil
+	}
 
 	topicInfos := make([]*pb.TopicInfo, 0, len(b.subscribers))
 	for k, t := range b.subscribers {
 		if len(t) == 0 {
 			continue
 		}
-		topicInfos = append(topicInfos, &pb.TopicInfo{Topic: k, SubscriberCount: int32(len(t))})
+
+		topicInfos = append(topicInfos, &pb.TopicInfo{
+			Topic:         k,
+			SubscriberIds: GetTopicSubscribers(t),
+		})
 	}
 	return &pb.ListTopicsReply{Topics: topicInfos}, nil
 }
@@ -144,7 +193,7 @@ func main() {
 	}
 
 	server := grpc.NewServer(opts...)
-	broker := &Broker{subscribers: make(map[string][]chan SubscriberMessage)}
+	broker := &Broker{subscribers: make(map[string]map[string]chan SubscriberMessage)}
 	pb.RegisterMessageBrokerServer(server, broker)
 
 	listener, err := net.Listen("tcp", port)
