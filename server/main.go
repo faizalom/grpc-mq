@@ -37,7 +37,7 @@ func (b *Broker) Publish(ctx context.Context, msg *pb.Message) (*pb.Response, er
 
 	subscribers, ok := b.subscribers[msg.Topic]
 	if !ok {
-		return nil, status.Error(codes.NotFound, "topic is empty")
+		return nil, status.Error(codes.NotFound, "no subscribers in this topic")
 	}
 
 	log.Printf("Publishing topic: %s, sender: %s, eventId: %v, Subscribers: %v",
