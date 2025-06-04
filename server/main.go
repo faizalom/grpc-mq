@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net"
 	"os"
@@ -35,12 +36,12 @@ func (b *Broker) Publish(ctx context.Context, msg *pb.Message) (*pb.Response, er
 		return nil, status.Errorf(codes.InvalidArgument, "senderId is required")
 	}
 
-	subscribers, ok := b.subscribers[msg.Topic]
-	if !ok {
+	subscribers := b.subscribers[msg.Topic]
+	if len(subscribers) == 0 {
 		return nil, status.Error(codes.NotFound, "no subscribers in this topic")
 	}
 
-	log.Printf("Publishing topic: %s, sender: %s, eventId: %v, Subscribers: %v",
+	log.Printf("[Publish    ] topic: %s, sender: %s, eventId: %v, Subscribers: %v",
 		msg.Topic, msg.GetSenderId(), msg.GetEventId(), len(subscribers))
 
 	b.mu.RLock()
@@ -56,6 +57,9 @@ func (b *Broker) Publish(ctx context.Context, msg *pb.Message) (*pb.Response, er
 	b.mu.RUnlock()
 	return &pb.Response{Success: true}, nil
 }
+
+// contextKey is a custom type for context keys to avoid collisions.
+type contextKey string
 
 func (b *Broker) Subscribe(req *pb.SubscriptionRequest, stream pb.MessageBroker_SubscribeServer) error {
 	// Return an error if the topic is empty or topic length is greater than 100
@@ -73,7 +77,7 @@ func (b *Broker) Subscribe(req *pb.SubscriptionRequest, stream pb.MessageBroker_
 		return status.Errorf(codes.AlreadyExists, "subscriberId already exists")
 	}
 
-	log.Printf("Subscribing topic: %s, subscriber: %s", req.Topic, subId)
+	log.Printf("[Subscribe  ] topic: %s, subscriber: %s", req.Topic, subId)
 
 	ch := make(chan SubscriberMessage)
 	b.mu.Lock()
@@ -84,11 +88,11 @@ func (b *Broker) Subscribe(req *pb.SubscriptionRequest, stream pb.MessageBroker_
 	b.mu.Unlock()
 
 	ctx := stream.Context()
-	ctx = context.WithValue(ctx, "subscriberId", subId)
+	ctx = context.WithValue(ctx, contextKey("subscriberId"), subId)
 	go func() {
 		<-ctx.Done()
-		subId := ctx.Value("subscriberId").(string)
-		log.Printf("Client disconnected from topic: %s, subscriber: %s", req.Topic, subId)
+		subId := ctx.Value(contextKey("subscriberId")).(string)
+		log.Printf("[UnSubscribe] topic: %s, subscriber: %s", req.Topic, subId)
 
 		b.mu.Lock()
 		// Delete subscriber when disconnected
@@ -160,25 +164,9 @@ func (b *Broker) ListTopics(ctx context.Context, req *pb.ListTopicsRequest) (*pb
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
-
-	port := os.Getenv("PORT")
-	tls := os.Getenv("TLS_ENABLED") == "true"
-	certFile := os.Getenv("TLS_CERT_FILE")
-	keyFile := os.Getenv("TLS_KEY_FILE")
-
-	if port == "" {
-		log.Fatal("PORT environment variable is not set")
-	}
-	if tls && certFile == "" {
-		log.Fatal("TLS_CERT_FILE environment variable is not set or set TLS_ENABLED to false without providing a certificate file")
-	}
-	if tls && keyFile == "" {
-		log.Fatal("TLS_KEY_FILE environment variable is not set or set TLS_ENABLED to false without providing a certificate file")
-	}
+	port, logFile, tls, certFile, keyFile := LoadEnvVariables()
+	// Set up logging
+	SetLogFile(logFile)
 
 	// Initialize gRPC server options
 	opts := []grpc.ServerOption{}
@@ -205,4 +193,47 @@ func main() {
 	if err := server.Serve(listener); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}
+}
+
+func LoadEnvVariables() (string, string, bool, string, string) {
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using environment variables")
+	}
+
+	portFlag := flag.String("port", os.Getenv("PORT"), "Port number")
+	logFileFlag := flag.String("logFile", os.Getenv("LOG_FILE"), "Log file path")
+	tlsEnabledFlag := flag.String("tlsEnabled", os.Getenv("TLS_ENABLED"), "Enable TLS (true/false)")
+	tlsCertFileFlag := flag.String("tlsCertFile", os.Getenv("TLS_CERT_FILE"), "TLS certificate file path")
+	tlsKeyFileFlag := flag.String("tlsKeyFile", os.Getenv("TLS_KEY_FILE"), "TLS key file path")
+
+	flag.Parse()
+
+	port := *portFlag
+	logFile := *logFileFlag
+	tls := *tlsEnabledFlag == "true" // Check if TLS is enabled and get the certificate files
+	certFile := *tlsCertFileFlag
+	keyFile := *tlsKeyFileFlag
+
+	if port == "" {
+		port = ":50051" // Default port if not set
+	}
+	if tls && certFile == "" {
+		log.Fatal("TLS_CERT_FILE environment variable is not set or set TLS_ENABLED to false without providing a certificate file")
+	}
+	if tls && keyFile == "" {
+		log.Fatal("TLS_KEY_FILE environment variable is not set or set TLS_ENABLED to false without providing a certificate file")
+	}
+
+	return port, logFile, tls, certFile, keyFile
+}
+
+func SetLogFile(logFile string) {
+	if logFile != "" {
+		logFile, err := os.OpenFile(logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("error opening file: %v", err)
+		}
+		log.SetOutput(logFile)
+	}
+	log.SetFlags(log.Ldate | log.Lmicroseconds)
 }
